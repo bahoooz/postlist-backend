@@ -171,13 +171,48 @@ export const getUser = async (req: Request, res: Response) => {
       });
     }
 
-    console.error("Error get user session :", error);
+    console.error("Error get user :", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
 // export const getAllUsers = async (req: Request, res: Response) => {};
-export const updateUser = async (req: Request, res: Response) => {};
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const { username, email, password }: UserFields = req.body
+
+    // VERIF FIELDS
+
+    if (!id.trim()) return res.status(400).json({ errorCode: "ID_IS_MISSING", message: "Id is missing" })
+    if (!username || !email || !password) return res.status(400).json({ errorCode: "MISSING_FIELDS", message: "Required fields : username, email and password" })
+
+    // PARSE ID TO NUMBER
+
+    const userId = Number(id)
+
+    // VERIF EXISTING USER
+
+    const existingUser = await prisma.user.findUnique({ where: { id: userId } })
+
+    if (!existingUser) return res.status(404).json({errorCode: "USER_NOT_FOUND", message: ""})
+
+    // UPDATE USER
+
+    const userUpdated = await prisma.user.update({
+      where: { id: userId }, data: {
+        username,
+        email,
+        password
+      }
+    })
+
+
+  } catch (error) {
+    console.error("Error update user :", error)
+    res.status(500).json({ error: "Internal Error Server" })
+  }
+};
 
 export const deleteUser = async (req: Request, res: Response) => {
   try {
