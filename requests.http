@@ -1,0 +1,26 @@
+@baseUrl = http://localhost:4000
+
+### GET ALL USERS
+GET {{baseUrl}}/users
+
+### CREATE USER
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+    "username": "Bahoz2",
+    "email": "bahoz.coding2@gmail.com",
+    "password" : "mdp1234_&A",
+    "confirmPassword" : "mdp1234_&A"
+}
+
+### UPDATE USER
+PATCH {{baseUrl}}/users/1
+Content-Type: application/json
+
+{
+    "username": "Bahozupdated2"
+}
+
+### DELETE USER 
+DELETE {{baseUrl}}/users/1

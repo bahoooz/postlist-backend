@@ -35,4 +35,5 @@ model PostIt {
   userId    Int
   date      DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isPublic  Boolean  @default(false)
 }

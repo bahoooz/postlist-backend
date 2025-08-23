@@ -1,6 +1,7 @@
-export type UserFields = {
+export type User = {
   username: string;
   email: string;
   password: string;
   confirmPassword: string;
+  PostIts?: string[];
 };

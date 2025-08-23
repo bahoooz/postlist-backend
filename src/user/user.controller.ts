@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 import bcrypt from "bcrypt";
-import { UserFields } from "../types/user.controller.types";
+import { User } from "../types/user.controller.types";
 
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { username, email, password, confirmPassword }: UserFields = req.body;
+    const { username, email, password, confirmPassword }: User = req.body;
 
     // VERIF FIELDS
 
@@ -144,7 +144,7 @@ export const getUser = async (req: Request, res: Response) => {
 
     const userId = Number(id);
 
-    // GET USER (SESSION)
+    // GET USER
 
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -164,7 +164,7 @@ export const getUser = async (req: Request, res: Response) => {
   } catch (error) {
     // PRISMA ERROR
 
-    if (error?.code === "P2025") {
+    if (error === "P2025") {
       return res.status(404).json({
         errorCode: "USER_NOT_FOUND",
         message: "User not found",
@@ -176,41 +176,173 @@ export const getUser = async (req: Request, res: Response) => {
   }
 };
 
-// export const getAllUsers = async (req: Request, res: Response) => {};
+export const getAllUsers = async (_req: Request, res: Response) => {
+  try {
+    // GET ALL USERS
+
+    const allUsers = await prisma.user.findMany();
+
+    // VERIF LENGTH ARRAY ALL USERS
+
+    if (allUsers.length === 0)
+      return res
+        .status(404)
+        .json({ errorCode: "NO_USERS_FOUND", message: "No users found" });
+
+    return res.status(200).json({ message: "All users :", users: allUsers });
+  } catch (error) {
+    console.error("Error get all users :", error);
+    return res.status(500).json({ error: "Internal Error Server" });
+  }
+};
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
-    const { username, email, password }: UserFields = req.body
+    const { id } = req.params;
+    const userId = Number(id);
+
+    const { username, email, password, confirmPassword } = req.body as {
+      username?: string;
+      email?: string;
+      password?: string;
+      confirmPassword?: string;
+    };
 
     // VERIF FIELDS
 
-    if (!id.trim()) return res.status(400).json({ errorCode: "ID_IS_MISSING", message: "Id is missing" })
-    if (!username || !email || !password) return res.status(400).json({ errorCode: "MISSING_FIELDS", message: "Required fields : username, email and password" })
+    if (!id?.trim())
+      return res
+        .status(400)
+        .json({ errorCode: "ID_IS_MISSING", message: "Id is missing" });
 
-    // PARSE ID TO NUMBER
+    if (!username && !email && !password)
+      return res.status(400).json({
+        errorCode: "MISSING_FIELDS",
+        message:
+          "At least one field (username, email or password) must be provided",
+      });
 
-    const userId = Number(id)
+    // NORMALIZE FIELDS (IF IT'S PRESENT)
+
+    const normalizedUsername = username ? username.trim() : undefined;
+    const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
+
+    // VERIF USERNAME RULES (IF IT'S PRESENT)
+
+    if (normalizedUsername !== undefined) {
+      const usernameRegex = /^[a-zA-Z0-9._]*$/;
+      if (!usernameRegex.test(normalizedUsername))
+        return res.status(400).json({
+          errorCode: "INVALID_USERNAME",
+          message:
+            "Username must be only contain letters, numbers, dots or underscores",
+        });
+
+      if (normalizedUsername.length < 3)
+        return res.status(400).json({
+          errorCode: "USERNAME_TOO_SHORT",
+          message: "Username must be at least 3 characters long",
+        });
+
+      if (normalizedUsername.length > 30)
+        return res.status(400).json({
+          errorCode: "USERNAME_TOO_LONG",
+          message: "Username must not exceed 30 characters",
+        });
+    }
+
+    // VERIF EMAIL RULES AND LENGTH (IF IT'S PRESENT)
+
+    if (normalizedEmail !== undefined) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail) || normalizedEmail.length > 254)
+        return res.status(400).json({
+          errorCode: "INVALID_EMAIL",
+          message: "Invalid email format",
+        });
+    }
+
+    // PASSWORD (IF IT'S PRESENT)
+
+    let hashedPassword: string | undefined;
+    if (typeof password === "string") {
+      if (password.length < 8)
+        return res.status(400).json({
+          errorCode: "PASSWORD_TOO_SHORT",
+          message: "Password must be at least 8 characters long",
+        });
+
+      if (password.length > 64)
+        return res.status(400).json({
+          errorCode: "PASSWORD_TOO_LONG",
+          message: "Password must not exceed 64 characters",
+        });
+
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/;
+      if (!passwordRegex.test(password))
+        return res.status(400).json({
+          errorCode: "PASSWORD_WEAK",
+          message:
+            "Password must include at least 1 uppercase, 1 lowercase, 1 number and 1 special character",
+        });
+
+      if (password !== confirmPassword)
+        return res.status(400).json({
+          errorCode: "PASSWORD_NOT_MATCH",
+          message: "Passwords do not match",
+        });
+
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
 
     // VERIF EXISTING USER
 
-    const existingUser = await prisma.user.findUnique({ where: { id: userId } })
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!existingUser)
+      return res
+        .status(404)
+        .json({ errorCode: "USER_NOT_FOUND", message: "User not found" });
 
-    if (!existingUser) return res.status(404).json({errorCode: "USER_NOT_FOUND", message: ""})
+    // UPDATE USER (ONLY PRESENTS FIELDS)
 
-    // UPDATE USER
+    const updatedFields: any = {};
+
+    if (normalizedUsername !== undefined)
+      updatedFields.username = normalizedUsername;
+    if (normalizedEmail !== undefined) updatedFields.email = normalizedEmail;
+    if (hashedPassword !== undefined) updatedFields.password = hashedPassword;
 
     const userUpdated = await prisma.user.update({
-      where: { id: userId }, data: {
-        username,
-        email,
-        password
-      }
-    })
+      where: { id: userId },
+      data: updatedFields,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
 
-
-  } catch (error) {
-    console.error("Error update user :", error)
-    res.status(500).json({ error: "Internal Error Server" })
+    return res
+      .status(200)
+      .json({ message: "User updated successfully :", user: userUpdated });
+  } catch (error: any) {
+    if (error?.code === "P2025") {
+      return res
+        .status(404)
+        .json({ errorCode: "USER_NOT_FOUND", message: "User not found" });
+    }
+    if (error?.code === "P2002") {
+      return res.status(400).json({
+        errorCode: "UNIQUE_CONSTRAINT",
+        message: "Username or email already taken",
+      });
+    }
+    console.error("Error update user :", error);
+    return res.status(500).json({ error: "Internal Error Server" });
   }
 };
 
@@ -254,7 +386,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   } catch (error) {
     // PRISMA ERROR
 
-    if (error?.code === "P2025") {
+    if (error === "P2025") {
       return res.status(404).json({
         errorCode: "USER_NOT_FOUND",
         message: "User not found",
@@ -262,6 +394,6 @@ export const deleteUser = async (req: Request, res: Response) => {
     }
 
     console.error("Error delete user :", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
