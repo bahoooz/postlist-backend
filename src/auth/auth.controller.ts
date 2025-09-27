@@ -8,24 +8,29 @@ const JWT_EXPIRES_IN = "7d";
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
 
     // VERIF EMAIL & PASSWORD
 
-    if (!email.trim() || !password.trim())
+    const emailOrUsername = email?.trim() || username?.trim();
+
+    if (!emailOrUsername || !password.trim())
       return res.status(400).json({
         errorCode: "MISSING_FIELDS",
-        message: "Email and password are required",
+        message: "Email or username and password are required",
       });
 
-    // NORMALIZE EMAIL
+    // NORMALIZE EMAIL IF IT'S PROVIDED
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedUsername = username.trim();
 
     // VERIF EXISTING USER
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: normalizedEmail }, { username: normalizedUsername }],
+      },
     });
 
     if (!existingUser)

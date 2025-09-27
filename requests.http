@@ -8,8 +8,8 @@ POST {{baseUrl}}/users
 Content-Type: application/json
 
 {
-    "username": "Bahoz2",
-    "email": "bahoz.coding2@gmail.com",
+    "username": "Bahoz2_",
+    "email": "phantomz53530@gmail.com",
     "password" : "mdp1234_&A",
     "confirmPassword" : "mdp1234_&A"
 }
@@ -24,3 +24,12 @@ Content-Type: application/json
 
 ### DELETE USER 
 DELETE {{baseUrl}}/users/1
+
+### LOGIN
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "username": "Bahoz2_",
+    "password": "mdp1234_&A"
+}
