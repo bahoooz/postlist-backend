@@ -9,6 +9,10 @@ const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 
+app.get("/", (_req, res) => {
+  res.json({ ok: true, uptime: process.uptime() });
+});
+
 // Logique CORS ici
 
 // Logique CORS ici
