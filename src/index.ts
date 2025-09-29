@@ -2,6 +2,15 @@ import express from "express";
 import userRoutes from "./user/user.routes";
 import postItRoutes from "./post-it/post-it.routes";
 import authRoutes from "./auth/auth.routes";
+import path from "path";
+import dotenv from "dotenv";
+
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+console.log("ENV CHECK:", {
+  PORT: process.env.PORT,
+  HAS_DB: !!process.env.DATABASE_URL,
+});
 
 const app = express();
 
