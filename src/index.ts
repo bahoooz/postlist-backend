@@ -22,6 +22,20 @@ app.get("/", (_req, res) => {
   res.json({ ok: true, uptime: process.uptime() });
 });
 
+app.get("/__debug_users", async (_req, res) => {
+  try {
+    const { PrismaClient } = await import("@prisma/client");
+    const p = new PrismaClient({ log: ["error", "warn", "info"] });
+    const users = await p.user.findMany();
+    await p.$disconnect();
+    res.json({ ok: true, usersCount: users.length });
+  } catch (e: any) {
+    console.error("DEBUG route error:", e);
+    res.status(500).json({ error: "debug fail", detail: String(e?.message || e) });
+  }
+});
+
+
 // Logique CORS ici
 
 // Logique CORS ici
